@@ -18,7 +18,7 @@ from flask import Flask, request, redirect, jsonify, send_from_directory
 from flask_cors import CORS
 from urllib.parse import urlencode
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='.')
 CORS(app)
 
 # =============================================================================
@@ -681,11 +681,11 @@ def create_wl_partner_invoice(partner_name, companies, usage_data, month):
 
 @app.route('/')
 def index():
-    return send_from_directory('static', 'index.html')
+    return send_from_directory('.', 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory('static', path)
+    return send_from_directory('.', path)
 
 # =============================================================================
 # RUN SERVER
