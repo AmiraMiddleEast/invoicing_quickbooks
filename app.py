@@ -334,18 +334,26 @@ def qb_create_item():
 # SEATABLE API ENDPOINTS  
 # =============================================================================
 
-@app.route('/api/seatable/data')
+@app.route('/api/seatable/data', methods=['GET', 'POST'])
 def get_seatable_data():
     """Get partners and companies from SeaTable"""
-    if not CONFIG['seatable_token']:
-        return jsonify({'error': 'SeaTable not configured'}), 400
+    
+    # Get token from request body (POST) or query param (GET)
+    if request.method == 'POST':
+        data = request.json or {}
+        token = data.get('token', '')
+    else:
+        token = request.args.get('token', '')
+    
+    if not token:
+        return jsonify({'error': 'SeaTable token required'}), 400
     
     try:
         # Get access token - this also returns the dtable_uuid!
         token_url = f"{CONFIG['seatable_url']}/api/v2.1/dtable/app-access-token/"
         token_response = requests.get(
             token_url,
-            headers={'Authorization': f"Bearer {CONFIG['seatable_token']}"}
+            headers={'Authorization': f"Bearer {token}"}
         )
         
         if token_response.status_code != 200:
@@ -353,7 +361,7 @@ def get_seatable_data():
         
         token_data = token_response.json()
         access_token = token_data.get('access_token')
-        dtable_uuid = token_data.get('dtable_uuid')  # UUID comes from API!
+        dtable_uuid = token_data.get('dtable_uuid')
         
         if not dtable_uuid:
             return jsonify({'error': 'Could not get dtable_uuid from SeaTable'}), 400
