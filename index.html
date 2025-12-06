@@ -563,8 +563,12 @@
                     body: JSON.stringify({ token, dtable_uuid: uuid })
                 });
                 
-                // Fetch data
-                const response = await fetch('/api/seatable/data');
+// Fetch data (pass token directly)
+const response = await fetch('/api/seatable/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token })
+});
                 const data = await response.json();
                 
                 if (data.error) {
