@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amira - Invoicing Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-light: #F8FAFC; --bg-card: #FFFFFF; --bg-card-hover: #F1F5F9;
+            --border: #E2E8F0; --border-dark: #CBD5E1;
+            --text: #1E293B; --text-muted: #64748B; --text-light: #FFFFFF;
+            --primary: #8B5CF6; --primary-dark: #7C3AED;
+            --success: #10B981; --error: #EF4444; --warning: #F59E0B;
+            --purple: #8B5CF6; --magenta: #A855F7; --green: #10B981;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg-light); color: var(--text); min-height: 100vh; }
+        
+        .app-container { display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: var(--text); color: var(--text-light); padding: 24px; position: fixed; height: 100vh; overflow-y: auto; }
+        .main-content { margin-left: 260px; flex: 1; padding: 32px; }
+        
+        .sidebar-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+        .sidebar-logo img { width: 40px; height: 40px; border-radius: 10px; }
+        .sidebar-logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem; font-weight: 700; }
+        
+        .sidebar-nav { list-style: none; }
+        .sidebar-nav li { margin-bottom: 8px; }
+        .sidebar-nav a { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: rgba(255,255,255,0.6); text-decoration: none; border-radius: 10px; transition: all 0.2s; font-weight: 500; cursor: pointer; }
+        .sidebar-nav a:hover { background: rgba(255,255,255,0.1); color: var(--text-light); }
+        .sidebar-nav a.active { background: var(--primary); color: var(--text-light); }
+        
+        .connection-status { margin-top: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; }
+        .status-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-dot.connected { background: var(--success); }
+        .status-dot.disconnected { background: var(--error); }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .page-header { margin-bottom: 32px; }
+        .page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; }
+        .page-subtitle { color: var(--text-muted); }
+        
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+        .card-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        
+        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-secondary { background: var(--bg-light); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 0.9rem; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 16px; }
+        .stat-icon.purple { background: rgba(139, 92, 246, 0.15); }
+        .stat-icon.green { background: rgba(16, 185, 129, 0.15); }
+        .stat-icon.orange { background: rgba(245, 158, 11, 0.15); }
+        .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 2rem; font-weight: 700; }
+        .stat-label { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg-light); font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; }
+        tr:hover { background: var(--bg-card-hover); }
+        
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-success { background: rgba(16, 185, 129, 0.15); color: #059669; }
+        .badge-warning { background: rgba(245, 158, 11, 0.15); color: #D97706; }
+        .badge-purple { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
+        
+        .invoice-preview { background: var(--bg-light); border-radius: 12px; padding: 20px; margin-top: 16px; }
+        .invoice-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid var(--primary); }
+        .invoice-lines { margin: 16px 0; }
+        .invoice-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .invoice-total { font-size: 1.25rem; font-weight: 700; text-align: right; padding-top: 16px; border-top: 2px solid var(--text); }
+        
+        .usage-upload { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .usage-upload:hover { border-color: var(--primary); background: rgba(139, 92, 246, 0.05); }
+        .usage-upload.dragover { border-color: var(--primary); background: rgba(139, 92, 246, 0.1); }
+        
+        .alert { padding: 16px; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+        .alert-info { background: rgba(139, 92, 246, 0.1); color: var(--purple); }
+        .alert-success { background: rgba(16, 185, 129, 0.1); color: #059669; }
+        .alert-error { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
+        
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; }
+            .two-col { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #A855F7, #8B5CF6); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: white; font-weight: bold; font-size: 20px;">A</span>
+                </div>
+                <div>
+                    <div class="sidebar-logo-text">Amira</div>
+                    <div style="font-size: 0.65rem; color: rgba(255,255,255,0.5); font-style: italic;">almost human</div>
+                </div>
+            </div>
+            
+            <nav>
+                <ul class="sidebar-nav">
+                    <li><a class="active" onclick="showPage('dashboard')">📊 Dashboard</a></li>
+                    <li><a onclick="showPage('connections')">🔗 Connections</a></li>
+                    <li><a onclick="showPage('customers')">👥 Customers</a></li>
+                    <li><a onclick="showPage('usage')">📈 Usage Data</a></li>
+                    <li><a onclick="showPage('invoices')">📄 Generate Invoices</a></li>
+                    <li><a onclick="showPage('history')">📜 Invoice History</a></li>
+                </ul>
+            </nav>
+            
+            <div class="connection-status">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 12px;">Connections</div>
+                <div class="status-item">
+                    <div class="status-dot disconnected" id="qb-status-dot"></div>
+                    <span>QuickBooks</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot disconnected" id="st-status-dot"></div>
+                    <span>SeaTable</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Dashboard Page -->
+            <div id="page-dashboard" class="page active">
+                <div class="page-header">
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Amira Invoicing Manager - Connect your data sources and generate invoices</p>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon purple">📊</div>
+                        <div class="stat-value" id="stat-partners">0</div>
+                        <div class="stat-label">Partners</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">🏢</div>
+                        <div class="stat-value" id="stat-customers">0</div>
+                        <div class="stat-label">Customers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">📄</div>
+                        <div class="stat-value" id="stat-invoices">0</div>
+                        <div class="stat-label">Pending Invoices</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">🚀 Quick Start</div>
+                    <div class="alert alert-info">
+                        <span>👋</span>
+                        <div>
+                            <strong>Welcome!</strong> To generate invoices, complete these steps:
+                            <ol style="margin-top: 8px; padding-left: 20px;">
+                                <li>Connect to QuickBooks (for invoice creation)</li>
+                                <li>Connect to SeaTable (for customer/partner data)</li>
+                                <li>Upload or enter usage data</li>
+                                <li>Generate and send invoices!</li>
+                            </ol>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="showPage('connections')">Start Setup →</button>
+                </div>
+            </div>
+
+            <!-- Connections Page -->
+            <div id="page-connections" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Connections</h1>
+                    <p class="page-subtitle">Connect your QuickBooks and SeaTable accounts</p>
+                </div>
+                
+                <div class="two-col">
+                    <div class="card">
+                        <div class="card-title">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Intuit_QuickBooks_logo.svg" style="height: 24px;">
+                            QuickBooks Online
+                        </div>
+                        <p style="color: var(--text-muted); margin-bottom: 16px;">Connect to QuickBooks to create and manage invoices.</p>
+                        
+                        <div id="qb-not-connected">
+                            <div class="alert alert-info" style="margin-bottom: 16px;">
+                                <span>ℹ️</span>
+                                <span>Click below to authorize access to your QuickBooks account.</span>
+                            </div>
+                            <a href="/auth/quickbooks" class="btn btn-success">Connect to QuickBooks</a>
+                        </div>
+                        
+                        <div id="qb-connected" style="display: none;">
+                            <div class="alert alert-success">
+                                <span>✓</span>
+                                <div>
+                                    <strong>Connected!</strong><br>
+                                    <span id="qb-company-name">Company Name</span>
+                                </div>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted);">
+                                Environment: <span id="qb-environment">Sandbox</span><br>
+                                Expires: <span id="qb-expires">--</span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-title">
+                            <span style="font-size: 24px;">📊</span>
+                            SeaTable
+                        </div>
+                        <p style="color: var(--text-muted); margin-bottom: 16px;">Connect to SeaTable for customer and partner data.</p>
+                        
+                        <div class="form-group">
+                            <label>API Token</label>
+                            <input type="password" id="seatable-token" placeholder="Enter your SeaTable API token">
+                        </div>
+                        <div class="form-group">
+                            <label>DTable UUID</label>
+                            <input type="text" id="seatable-uuid" value="78178a41-81a5-440c-936a-ebb75tried96" placeholder="DTable UUID">
+                        </div>
+                        <button class="btn btn-primary" onclick="connectSeaTable()">Connect to SeaTable</button>
+                        <div id="seatable-status" style="margin-top: 16px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customers Page -->
+            <div id="page-customers" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Customers</h1>
+                    <p class="page-subtitle">Partners and customers from SeaTable</p>
+                </div>
+                
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div class="card-title" style="margin-bottom: 0;">📋 Customer List</div>
+                        <button class="btn btn-secondary" onclick="syncCustomers()">🔄 Sync from SeaTable</button>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Customer / Partner</th>
+                                <th>Type</th>
+                                <th>Package</th>
+                                <th>Monthly Fee</th>
+                                <th>QuickBooks Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-table">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                                    Connect to SeaTable to load customers
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Usage Data Page -->
+            <div id="page-usage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Usage Data</h1>
+                    <p class="page-subtitle">Import consumption data for billing</p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">📤 Upload Usage Data</div>
+                    <p style="color: var(--text-muted); margin-bottom: 16px;">
+                        Upload a CSV file with usage data. Expected columns: partner_name, customer_name, minutes_used, whatsapp_messages, email_messages
+                    </p>
+                    
+                    <div class="usage-upload" id="usage-dropzone" onclick="document.getElementById('usage-file').click()">
+                        <input type="file" id="usage-file" accept=".csv,.json" style="display: none;" onchange="handleUsageFile(this.files[0])">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+                        <div style="font-weight: 600;">Drop CSV file here or click to upload</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">Supports CSV and JSON formats</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">✏️ Manual Entry</div>
+                    <p style="color: var(--text-muted); margin-bottom: 16px;">Or enter usage data manually:</p>
+                    
+                    <div class="two-col">
+                        <div class="form-group">
+                            <label>Partner Name</label>
+                            <select id="usage-partner">
+                                <option value="">Select partner...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Customer Name</label>
+                            <select id="usage-customer">
+                                <option value="">Select customer...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="two-col">
+                        <div class="form-group">
+                            <label>Minutes Used</label>
+                            <input type="number" id="usage-minutes" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>WhatsApp Messages</label>
+                            <input type="number" id="usage-whatsapp" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Messages</label>
+                        <input type="number" id="usage-email" placeholder="0">
+                    </div>
+                    <button class="btn btn-primary" onclick="addUsageEntry()">Add Usage Entry</button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">📊 Current Usage Data</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Partner</th>
+                                <th>Customer</th>
+                                <th>Minutes</th>
+                                <th>WhatsApp</th>
+                                <th>Email</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usage-table">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                    No usage data entered yet
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Generate Invoices Page -->
+            <div id="page-invoices" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Generate Invoices</h1>
+                    <p class="page-subtitle">Create invoices for the selected billing period</p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">⚙️ Invoice Settings</div>
+                    
+                    <div class="two-col">
+                        <div class="form-group">
+                            <label>Billing Month</label>
+                            <input type="month" id="invoice-month">
+                        </div>
+                        <div class="form-group">
+                            <label>Invoice Date</label>
+                            <input type="date" id="invoice-date">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Due Date (Days)</label>
+                        <select id="invoice-due-days">
+                            <option value="15">Net 15</option>
+                            <option value="30" selected>Net 30</option>
+                            <option value="45">Net 45</option>
+                            <option value="60">Net 60</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="previewInvoices()">Preview Invoices</button>
+                </div>
+                
+                <div id="invoice-previews"></div>
+            </div>
+
+            <!-- History Page -->
+            <div id="page-history" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Invoice History</h1>
+                    <p class="page-subtitle">View previously generated invoices</p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">📜 Recent Invoices</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+                                    No invoices generated yet
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // =============================================================
+        // STATE
+        // =============================================================
+        let partners = [];
+        let companies = [];
+        let usageData = [];
+        let qbCustomers = [];
+        let generatedInvoices = [];
+
+        // =============================================================
+        // INITIALIZATION
+        // =============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default dates
+            const now = new Date();
+            document.getElementById('invoice-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('invoice-date').value = now.toISOString().split('T')[0];
+            
+            // Check QuickBooks status
+            checkQBStatus();
+            
+            // Load saved SeaTable token
+            const savedToken = localStorage.getItem('seatable_token');
+            if (savedToken) {
+                document.getElementById('seatable-token').value = savedToken;
+                connectSeaTable();
+            }
+            
+            // Load saved usage data
+            const savedUsage = localStorage.getItem('usage_data');
+            if (savedUsage) {
+                usageData = JSON.parse(savedUsage);
+                renderUsageTable();
+            }
+            
+            // Setup drag and drop
+            const dropzone = document.getElementById('usage-dropzone');
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('dragover');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                handleUsageFile(e.dataTransfer.files[0]);
+            });
+        });
+
+        // =============================================================
+        // NAVIGATION
+        // =============================================================
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            
+            document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // =============================================================
+        // QUICKBOOKS
+        // =============================================================
+        async function checkQBStatus() {
+            try {
+                const response = await fetch('/api/qb/status');
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('qb-status-dot');
+                const notConnected = document.getElementById('qb-not-connected');
+                const connected = document.getElementById('qb-connected');
+                
+                if (data.connected) {
+                    statusDot.classList.remove('disconnected');
+                    statusDot.classList.add('connected');
+                    notConnected.style.display = 'none';
+                    connected.style.display = 'block';
+                    
+                    document.getElementById('qb-environment').textContent = data.environment;
+                    document.getElementById('qb-expires').textContent = new Date(data.expires_at).toLocaleString();
+                    
+                    // Get company info
+                    fetchQBCompany();
+                } else {
+                    statusDot.classList.remove('connected');
+                    statusDot.classList.add('disconnected');
+                    notConnected.style.display = 'block';
+                    connected.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Failed to check QB status:', error);
+            }
+        }
+
+        async function fetchQBCompany() {
+            try {
+                const response = await fetch('/api/qb/company');
+                const data = await response.json();
+                
+                if (data.CompanyInfo) {
+                    document.getElementById('qb-company-name').textContent = data.CompanyInfo.CompanyName;
+                }
+            } catch (error) {
+                console.error('Failed to fetch company info:', error);
+            }
+        }
+
+        // =============================================================
+        // SEATABLE
+        // =============================================================
+        async function connectSeaTable() {
+            const token = document.getElementById('seatable-token').value;
+            const uuid = document.getElementById('seatable-uuid').value;
+            const statusDiv = document.getElementById('seatable-status');
+            
+            if (!token) {
+                statusDiv.innerHTML = '<div class="alert alert-error">Please enter your SeaTable API token</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="alert alert-info">Connecting...</div>';
+            
+            try {
+                // Save config
+                await fetch('/api/seatable/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, dtable_uuid: uuid })
+                });
+                
+                // Fetch data
+                const response = await fetch('/api/seatable/data');
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                partners = data.partners || [];
+                companies = data.companies || [];
+                
+                // Update UI
+                document.getElementById('st-status-dot').classList.remove('disconnected');
+                document.getElementById('st-status-dot').classList.add('connected');
+                
+                statusDiv.innerHTML = `<div class="alert alert-success">✓ Connected! Loaded ${partners.length} partners and ${companies.length} companies.</div>`;
+                
+                // Save token
+                localStorage.setItem('seatable_token', token);
+                
+                // Update stats
+                document.getElementById('stat-partners').textContent = partners.length;
+                document.getElementById('stat-customers').textContent = companies.length;
+                
+                // Update dropdowns
+                updatePartnerDropdown();
+                
+                // Render customers table
+                renderCustomersTable();
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="alert alert-error">Failed to connect: ${error.message}</div>`;
+            }
+        }
+
+        function updatePartnerDropdown() {
+            const select = document.getElementById('usage-partner');
+            select.innerHTML = '<option value="">Select partner...</option>';
+            
+            partners.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.name;
+                opt.textContent = `${p.name} ${p.is_direct ? '(Direct)' : '(WL)'}`;
+                select.appendChild(opt);
+            });
+            
+            select.onchange = () => {
+                const partnerName = select.value;
+                const customerSelect = document.getElementById('usage-customer');
+                customerSelect.innerHTML = '<option value="">Select customer...</option>';
+                
+                const partnerCompanies = companies.filter(c => {
+                    const partner = partners.find(p => p.id === c.partner_id || p.name === c.partner_id);
+                    return partner && partner.name === partnerName;
+                });
+                
+                partnerCompanies.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.name;
+                    opt.textContent = c.name;
+                    customerSelect.appendChild(opt);
+                });
+            };
+        }
+
+        function renderCustomersTable() {
+            const tbody = document.getElementById('customers-table');
+            
+            if (companies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">No customers found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = companies.map(c => {
+                const partner = partners.find(p => p.id === c.partner_id || p.name === c.partner_id);
+                const partnerName = partner ? partner.name : 'Unknown';
+                const isDirect = partner ? partner.is_direct : false;
+                const uniqueId = `${partnerName} | ${c.name}`;
+                
+                return `
+                    <tr>
+                        <td>
+                            <strong>${c.name}</strong><br>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">${partnerName}</span>
+                        </td>
+                        <td>
+                            <span class="badge ${isDirect ? 'badge-purple' : 'badge-warning'}">
+                                ${isDirect ? 'Direct' : 'White Label'}
+                            </span>
+                        </td>
+                        <td>${c.package || 'Standard'}</td>
+                        <td>${c.monthly_fee?.toFixed(2) || '0.00'} AED</td>
+                        <td><span class="badge badge-warning">Not Synced</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function syncCustomers() {
+            await connectSeaTable();
+        }
+
+        // =============================================================
+        // USAGE DATA
+        // =============================================================
+        function addUsageEntry() {
+            const partnerName = document.getElementById('usage-partner').value;
+            const customerName = document.getElementById('usage-customer').value;
+            const minutes = parseInt(document.getElementById('usage-minutes').value) || 0;
+            const whatsapp = parseInt(document.getElementById('usage-whatsapp').value) || 0;
+            const email = parseInt(document.getElementById('usage-email').value) || 0;
+            
+            if (!partnerName || !customerName) {
+                alert('Please select a partner and customer');
+                return;
+            }
+            
+            usageData.push({
+                partner_name: partnerName,
+                customer_name: customerName,
+                minutes_used: minutes,
+                whatsapp_messages: whatsapp,
+                email_messages: email
+            });
+            
+            localStorage.setItem('usage_data', JSON.stringify(usageData));
+            renderUsageTable();
+            
+            // Clear form
+            document.getElementById('usage-minutes').value = '';
+            document.getElementById('usage-whatsapp').value = '';
+            document.getElementById('usage-email').value = '';
+        }
+
+        function handleUsageFile(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                
+                if (file.name.endsWith('.json')) {
+                    usageData = JSON.parse(content);
+                } else {
+                    // Parse CSV
+                    const lines = content.split('\n');
+                    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                    
+                    usageData = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        const values = lines[i].split(',').map(v => v.trim());
+                        const entry = {};
+                        headers.forEach((h, idx) => {
+                            if (h.includes('partner')) entry.partner_name = values[idx];
+                            else if (h.includes('customer')) entry.customer_name = values[idx];
+                            else if (h.includes('minute')) entry.minutes_used = parseInt(values[idx]) || 0;
+                            else if (h.includes('whatsapp')) entry.whatsapp_messages = parseInt(values[idx]) || 0;
+                            else if (h.includes('email')) entry.email_messages = parseInt(values[idx]) || 0;
+                        });
+                        if (entry.partner_name && entry.customer_name) {
+                            usageData.push(entry);
+                        }
+                    }
+                }
+                
+                localStorage.setItem('usage_data', JSON.stringify(usageData));
+                renderUsageTable();
+                alert(`Loaded ${usageData.length} usage entries`);
+            };
+            reader.readAsText(file);
+        }
+
+        function renderUsageTable() {
+            const tbody = document.getElementById('usage-table');
+            
+            if (usageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No usage data entered yet</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = usageData.map((u, idx) => `
+                <tr>
+                    <td>${u.partner_name}</td>
+                    <td>${u.customer_name}</td>
+                    <td>${u.minutes_used || 0}</td>
+                    <td>${u.whatsapp_messages || 0}</td>
+                    <td>${u.email_messages || 0}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.8rem;" onclick="removeUsageEntry(${idx})">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function removeUsageEntry(idx) {
+            usageData.splice(idx, 1);
+            localStorage.setItem('usage_data', JSON.stringify(usageData));
+            renderUsageTable();
+        }
+
+        // =============================================================
+        // INVOICE GENERATION
+        // =============================================================
+        async function previewInvoices() {
+            const month = document.getElementById('invoice-month').value;
+            const invoiceDate = document.getElementById('invoice-date').value;
+            const dueDays = parseInt(document.getElementById('invoice-due-days').value);
+            
+            if (!month) {
+                alert('Please select a billing month');
+                return;
+            }
+            
+            const previewDiv = document.getElementById('invoice-previews');
+            previewDiv.innerHTML = '<div class="card"><p style="text-align: center;">Generating invoices...</p></div>';
+            
+            try {
+                const response = await fetch('/api/generate-invoices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        month,
+                        usage_data: usageData
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    previewDiv.innerHTML = `<div class="card"><div class="alert alert-error">${data.error}</div></div>`;
+                    return;
+                }
+                
+                generatedInvoices = data.invoices;
+                document.getElementById('stat-invoices').textContent = generatedInvoices.length;
+                
+                previewDiv.innerHTML = generatedInvoices.map((inv, idx) => `
+                    <div class="card">
+                        <div class="card-title">
+                            ${inv.type === 'direct' ? '👤' : '🏢'} 
+                            ${inv.customer_name}
+                            <span class="badge ${inv.type === 'direct' ? 'badge-purple' : 'badge-warning'}" style="margin-left: 12px;">
+                                ${inv.type === 'direct' ? 'Direct Customer' : 'WL Partner'}
+                            </span>
+                        </div>
+                        
+                        <div class="invoice-preview">
+                            <div class="invoice-header">
+                                <div>
+                                    <strong style="font-size: 1.25rem;">INVOICE</strong><br>
+                                    <span style="color: var(--text-muted);">Period: ${month}</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong>${inv.customer_name}</strong><br>
+                                    <span style="color: var(--text-muted);">${inv.partner_name}</span>
+                                </div>
+                            </div>
+                            
+                            ${inv.type === 'wl_partner' ? `
+                                <div style="background: rgba(139, 92, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                                    <strong>Partner Summary:</strong> ${inv.customer_count} customers, ${inv.free_minutes_pool} free minutes pool
+                                </div>
+                            ` : ''}
+                            
+                            <div class="invoice-lines">
+                                ${inv.line_items.map(item => `
+                                    <div class="invoice-line">
+                                        <span>${item.Description}</span>
+                                        <strong>${item.Amount.toFixed(2)} AED</strong>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <div class="invoice-total">
+                                Total: ${inv.total.toFixed(2)} AED
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 16px; display: flex; gap: 12px;">
+                            <button class="btn btn-success" onclick="sendToQuickBooks(${idx})">📤 Send to QuickBooks</button>
+                            <button class="btn btn-secondary" onclick="downloadInvoicePDF(${idx})">📄 Download PDF</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                previewDiv.innerHTML = `<div class="card"><div class="alert alert-error">Error: ${error.message}</div></div>`;
+            }
+        }
+
+        async function sendToQuickBooks(idx) {
+            const invoice = generatedInvoices[idx];
+            
+            // First, check if customer exists or create them
+            const customerName = invoice.type === 'direct' 
+                ? `${invoice.partner_name} | ${invoice.customer_name}`
+                : invoice.customer_name;
+            
+            try {
+                // Create customer in QB
+                await fetch('/api/qb/customer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        DisplayName: customerName,
+                        CompanyName: invoice.customer_name
+                    })
+                });
+                
+                // Get customer list to find ID
+                const custResponse = await fetch('/api/qb/customers');
+                const custData = await custResponse.json();
+                const qbCustomer = custData.customers?.find(c => c.DisplayName === customerName);
+                
+                if (!qbCustomer) {
+                    alert('Failed to find/create customer in QuickBooks');
+                    return;
+                }
+                
+                // Create invoice
+                const qbInvoice = {
+                    CustomerRef: { value: qbCustomer.Id },
+                    Line: invoice.line_items.map(item => ({
+                        DetailType: 'SalesItemLineDetail',
+                        Amount: item.Amount,
+                        Description: item.Description,
+                        SalesItemLineDetail: {
+                            ItemRef: { value: '1' } // Default service item
+                        }
+                    }))
+                };
+                
+                const invResponse = await fetch('/api/qb/invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(qbInvoice)
+                });
+                
+                const invData = await invResponse.json();
+                
+                if (invData.Invoice) {
+                    alert(`✓ Invoice created in QuickBooks!\nInvoice #: ${invData.Invoice.DocNumber || invData.Invoice.Id}`);
+                } else {
+                    alert('Failed to create invoice: ' + JSON.stringify(invData.error || invData));
+                }
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function downloadInvoicePDF(idx) {
+            // TODO: Implement PDF generation
+            alert('PDF generation coming soon!');
+        }
+    </script>
+</body>
+</html>
