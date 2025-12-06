@@ -334,14 +334,6 @@ def qb_create_item():
 # SEATABLE API ENDPOINTS  
 # =============================================================================
 
-@app.route('/api/seatable/config', methods=['POST'])
-def set_seatable_config():
-    """Set SeaTable configuration"""
-    data = request.json
-    CONFIG['seatable_token'] = data.get('token', '')
-    CONFIG['seatable_dtable_uuid'] = data.get('dtable_uuid', CONFIG['seatable_dtable_uuid'])
-    return jsonify({'success': True})
-
 @app.route('/api/seatable/data')
 def get_seatable_data():
     """Get partners and companies from SeaTable"""
@@ -349,7 +341,7 @@ def get_seatable_data():
         return jsonify({'error': 'SeaTable not configured'}), 400
     
     try:
-        # Get access token
+        # Get access token - this also returns the dtable_uuid!
         token_url = f"{CONFIG['seatable_url']}/api/v2.1/dtable/app-access-token/"
         token_response = requests.get(
             token_url,
@@ -357,12 +349,17 @@ def get_seatable_data():
         )
         
         if token_response.status_code != 200:
-            return jsonify({'error': 'Failed to get SeaTable access token'}), 400
+            return jsonify({'error': f'Failed to get SeaTable access token: {token_response.text}'}), 400
         
-        access_token = token_response.json().get('access_token')
+        token_data = token_response.json()
+        access_token = token_data.get('access_token')
+        dtable_uuid = token_data.get('dtable_uuid')  # UUID comes from API!
+        
+        if not dtable_uuid:
+            return jsonify({'error': 'Could not get dtable_uuid from SeaTable'}), 400
         
         # Get Partners
-        partners_url = f"{CONFIG['seatable_url']}/api-gateway/api/v2/dtables/{CONFIG['seatable_dtable_uuid']}/rows/?table_name=Partners"
+        partners_url = f"{CONFIG['seatable_url']}/api-gateway/api/v2/dtables/{dtable_uuid}/rows/?table_name=Partners"
         partners_response = requests.get(
             partners_url,
             headers={'Authorization': f"Bearer {access_token}"}
@@ -378,7 +375,7 @@ def get_seatable_data():
                 })
         
         # Get Companies
-        companies_url = f"{CONFIG['seatable_url']}/api-gateway/api/v2/dtables/{CONFIG['seatable_dtable_uuid']}/rows/?table_name=Companies"
+        companies_url = f"{CONFIG['seatable_url']}/api-gateway/api/v2/dtables/{dtable_uuid}/rows/?table_name=Companies"
         companies_response = requests.get(
             companies_url,
             headers={'Authorization': f"Bearer {access_token}"}
@@ -402,12 +399,12 @@ def get_seatable_data():
         
         return jsonify({
             'partners': partners,
-            'companies': companies
+            'companies': companies,
+            'dtable_uuid': dtable_uuid
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 # =============================================================================
 # INVOICE GENERATION LOGIC
 # =============================================================================
